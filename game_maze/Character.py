@@ -27,7 +27,7 @@ class Ability:
         player_to.change_karma(self.coeff)
         # num = abs(player_in.karma) // 3
         if player_to.karma * self.coeff >= 0:
-            player_to.change_life(self.coeff)
+            player_to.change_life(abs(self.coeff))
         else:
             player_to.change_life(-player_in.attack)
 
@@ -113,6 +113,12 @@ class Player(Character):
         self.artifacts = dict()
         self.ability = 'life'
 
+    def __str__(self):
+        s = 'Карма: {0}\nЖизнь: {1}\nАтака: {2}\nАртефакты: '\
+            .format(self.karma, self.life, self.attack)
+        for key, val in self.artifacts.items():
+            s += key + ' - ' + str(val) + '; '
+        return s
     def count_art(self):
         return len(self.artifacts)
 

@@ -92,8 +92,8 @@ class Game:
         # дописать нормально проверку
         for i in range(1, ht):
             for j in range(1, wd):
-                up = self.maze[i - 1][j] & 1 == 0
-                left = self.maze[i][j - 1] & 2 == 0
+                up = self.maze[i - 1][j] == 0 or self.maze[i - 1][j] == 2
+                left = self.maze[i][j - 1] == 0 or self.maze[i][j - 1] == 1
                 this = self.maze[i][j]
                 if this == 0 and (up or left) or this != 3 and up and left:
                     self.free_cell_up.append((j, i))
@@ -124,6 +124,7 @@ class Game:
             return False
         return True
 
+    # НАЙТИ ПОДХОДЯЩИЕ ИКОНКИ
     def icon_elements(self, coord):
         for ch in self.character:
             if coord == ch.coordinates:
@@ -163,6 +164,24 @@ class Game:
                 self.elements.remove(elem)
                 break
 
+    # ИСПРАВИТЬ!!!!! ЗАЦИКЛИВАЕТСЯ
+    def war(self, elem):
+        is_end = False
+        while True:
+            elem.ability.action(elem, self.player)
+            self.player.hit(elem)
+            if elem.life <= 0:
+                break
+            elem.hit(self.player)
+            if self.player.life <= 0:
+                if self.player.artifacts.get('extralife', 0) > 0:
+                    self.player.artifacts['extralife'] -= 1
+                    self.player.change_life(100)
+                    continue
+                else:
+                    is_end = True
+        return is_end
+
     def interaction_with_chr(self):
         is_end = False
         for elem in self.character:
@@ -170,24 +189,13 @@ class Game:
                 if self.player.karma * elem.karma >= 0:
                     elem.ability.action(elem, self.player)
                 else:
-                    while True:
-                        elem.ability.action(elem, self.player)
-                        self.player.hit(elem)
-                        if elem.life <= 0:
-                            break
-                        elem.hit(self.player)
-                        if self.player.life <= 0:
-                            if self.player.artifacts.get('extralife', 0) > 0:
-                                self.player.artifacts['extralife'] -= 1
-                                self.player.change_life(100)
-                                continue
-                            else:
-                                is_end = True
+                    is_end = self.war(elem)
                 self.coord_not_free.remove(elem.coordinates)
                 self.character.remove(elem)
                 break
         return is_end
 
+    # ЗАХОДЯТ НА ЗАНЯТЫЕ КЛЕТКИ
     def go_character(self):
         for elem in self.character:
             coord = elem.coordinates
@@ -223,6 +231,7 @@ class Game:
                 print("Game over!\n")
                 break
             self.maze.print_maze(self, self.player)
+            print(self.player)
 
 
 
