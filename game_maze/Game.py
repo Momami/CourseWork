@@ -14,7 +14,6 @@ def on_press(key):
     except AttributeError:
         print('special key {0} pressed'.format(key))
 
-
 def on_release(key):
     # print('{0} released'.format(key))
     if key in keys:
@@ -148,24 +147,81 @@ class Game:
         ht, wd = self.maze.height, self.maze.width
         self.point_in = self.point_to = self.free_cell()
         self.generate_artifact(count)
-        counter = ht * wd // 10 - count
-        self.generate_character(counter)
+        self.counter = ht * wd // 10 - count
+        self.generate_character(self.counter)
 
     def change_loc_character(self, coord1, coord2):
         self.coord_not_free.append(coord2)
         self.coord_not_free.remove(coord1)
 
+    def interaction_with_artifact(self):
+        for elem in self.elements:
+            if self.player.coordinates == elem.coordinates:
+                t = type(elem)
+                elem.action(self.player)
+                self.coord_not_free.remove(elem.coordinates)
+                self.elements.remove(elem)
+                break
+
+    def interaction_with_chr(self):
+        is_end = False
+        for elem in self.character:
+            if self.player.coordinates == elem.coordinates:
+                if self.player.karma * elem.karma >= 0:
+                    elem.ability.action(elem, self.player)
+                else:
+                    while True:
+                        elem.ability.action(elem, self.player)
+                        self.player.hit(elem)
+                        if elem.life <= 0:
+                            break
+                        elem.hit(self.player)
+                        if self.player.life <= 0:
+                            if self.player.artifacts.get('extralife', 0) > 0:
+                                self.player.artifacts['extralife'] -= 1
+                                self.player.change_life(100)
+                                continue
+                            else:
+                                is_end = True
+                self.coord_not_free.remove(elem.coordinates)
+                self.character.remove(elem)
+                break
+        return is_end
+
+    def go_character(self):
+        for elem in self.character:
+            coord = elem.coordinates
+            elem.step(self.maze)
+            self.coord_not_free.remove(coord)
+            self.coord_not_free.append(elem.coordinates)
+
+    def is_end(self, fl):
+        if self.player.coordinates == self.point_to:
+            if fl and self.player.artifacts['money'] >= self.counter or not fl:
+                return True
+            return False
+        return False
 
     def game(self):
         self.var1_level()
         self.maze.print_maze(self, self.player)
-        while True:
+        while not self.is_end(False):
             listener = kb.Listener(on_release=on_release)
             listener.start()
             listener.join()
             coord = self.player.coordinates
             self.player.new_location(self.maze, pressKey)
             self.change_loc_character(coord, self.player.coordinates)
+            self.interaction_with_artifact()
+            fl = self.interaction_with_chr()
+            if fl:
+                print("Game over!\n")
+                break
+            self.go_character()
+            fl = self.interaction_with_chr()
+            if fl:
+                print("Game over!\n")
+                break
             self.maze.print_maze(self, self.player)
 
 

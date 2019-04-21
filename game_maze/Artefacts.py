@@ -28,22 +28,22 @@ class Attack(Artifact):
 
 class Thing(Artifact):
     def action(self, person):
-        person.change_things(self)
+        person.add_things('money')
 
 class Portal(Artifact):
     def __init__(self, icon, coordinates, coordinates_to):
         super().__init__(icon, coordinates)
         self.coordinates_to = coordinates_to
 
-    def action(self, *prs_mz):
-        prs_mz[0].change_location(self.coordinates_to, prs_mz[1])
+    def action(self, player):
+        player.change_location_for_portal(self.coordinates_to)
 
 class ExtraLife(Artifact):
     def __init__(self, icon, coordinates):
         super().__init__(icon, coordinates)
 
     def action(self, person):
-        person.change_things(self)
+        person.add_things('extralife')
 
 
 class Surprise(Artifact):
