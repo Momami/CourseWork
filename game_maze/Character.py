@@ -24,26 +24,25 @@ class Ability:
             self.artifact_change(player_to)
 
     def life_change(self, player_in, player_to):
-        player_to.change_karma(self.coeff)
         # num = abs(player_in.karma) // 3
         if player_to.karma * self.coeff >= 0:
             player_to.change_life(abs(self.coeff))
         else:
             player_to.change_life(-player_in.attack)
+        player_to.change_karma(self.coeff)
 
     def artifact_change(self, player):
-        player.change_karma(self.coeff)
         if player.karma * self.coeff >= 0:
             rand = random.randint(0, 1)
             if rand:
-                thing = game_maze.Artefacts.Thing('', (0, 0))
+                player.add_things('money')
             else:
-                thing = game_maze.Artefacts.ExtraLife('', (0, 0))
-            player.add_things(thing)
+                player.add_things('extralife')
+
         else:
             if player.count_art():
-                rand = random.randint(0, player.count_art())
-                player.remove_things(rand, 1)
+                player.remove_things()
+        player.change_karma(self.coeff)
 
 
 class Character:
@@ -56,7 +55,7 @@ class Character:
         self.ability = ability
 
     def hit(self, player):
-        player.change_life(self.attack)
+        player.change_life(-self.attack)
 
     def change_karma(self, count):
         self.karma += count
@@ -90,7 +89,6 @@ class Character:
                 break
             num += 1
 
-
     def change_location(self, coord_to, maze):
         x_in, y_in = self.coordinates[0], self.coordinates[1]
         x, y = coord_to[0], coord_to[1]
@@ -119,12 +117,14 @@ class Player(Character):
         for key, val in self.artifacts.items():
             s += key + ' - ' + str(val) + '; '
         return s
+
     def count_art(self):
         return len(self.artifacts)
 
-    def remove_things(self, num):
-        cnt = 0 if self.artifacts[num] == 0 else self.artifacts[num] - 1
-        self.artifacts[num] = cnt
+    def remove_things(self):
+        key, value = self.artifacts.popitem()
+        value -= 1
+        self.artifacts[key] = value
 
     def change_attack(self, attack):
         self.attack += attack
@@ -136,8 +136,6 @@ class Player(Character):
 
     def change_location_for_portal(self, coord):
         self.coordinates = coord
-
-
 
     def new_location(self, maze, key):
         x, y = self.coordinates[0], self.coordinates[1]

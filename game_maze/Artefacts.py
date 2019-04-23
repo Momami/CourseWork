@@ -62,7 +62,7 @@ class Surprise(Artifact):
             attack = random.randint(-person.attack, 100)
             Attack(ic, coord, attack).action(person)
         elif number < 12:
-            x, y = random.randrange(0, self.wt, 1), random.randrange(0, self.ht, 1)
+            x, y = random.randint(0, self.wt - 1), random.randint(0, self.ht - 1)
             Portal(ic, coord, (x, y)).action(person)
         else:
             person.easter_egg()

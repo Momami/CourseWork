@@ -3,6 +3,8 @@ import game_maze.Artefacts as Art
 import game_maze.GenerationMaze as GenMaze
 import game_maze.Levels as Level
 import random as rn
+import os
+import sys
 from pynput import keyboard as kb
 
 keys = [kb.Key.down, kb.Key.right, kb.Key.left, kb.Key.up]
@@ -71,7 +73,7 @@ class Game:
                 coord = self.free_cell()
                 el = Art.Life(icon, coord, rn.randint(0, 55))
             elif num == 4:
-                icon = '⸙'
+                icon = 'ջ'
                 coord = self.free_cell()
                 el = Art.Attack(icon, coord, rn.randint(0, 50))
             else:
@@ -79,6 +81,7 @@ class Game:
                 coord = self.free_for_strange()
                 el = Art.Surprise(icon, coord, ht, wd)
             self.elements.append(el)
+    # ¥ ҁ
 
     def generate_elements(self, dim):
         k = dim // 10
@@ -89,6 +92,8 @@ class Game:
 
     def free_cell_upgrade(self):
         ht, wd = self.maze.height, self.maze.width
+        if self.maze[0][0] == 1 or self.maze[0][0] == 2:
+            self.free_cell_up.append((0, 0))
         # дописать нормально проверку
         for i in range(1, ht):
             for j in range(1, wd):
@@ -97,18 +102,29 @@ class Game:
                 this = self.maze[i][j]
                 if this == 0 and (up or left) or this != 3 and up and left:
                     self.free_cell_up.append((j, i))
+        for i in range(1, ht):
+            up = self.maze[i - 1][0] == 0 or self.maze[i - 1][0] == 2
+            this = self.maze[i][0]
+            if this != 3 and up or this == 0:
+                self.free_cell_up.append((0, i))
+        for j in range(1, wd):
+            left = self.maze[0][j - 1] == 0 or self.maze[0][j - 1] == 1
+            this = self.maze[0][j]
+            if this == 0 or this != 3 and left:
+                self.free_cell_up.append((j, 0))
 
     def in_free_up(self, coord):
-        if not self.free_cell_up or coord in self.free_cell_up:
+        if self.free_cell_up == [] or coord in self.free_cell_up:
             return True
         return False
 
     def free_for_strange(self):
         ht, wd = self.maze.height - 1, self.maze.width - 1
         coord = (rn.randint(0, wd), rn.randint(0, ht))
-        while not self.free(coord) and not self.in_free_up(coord):
+        while not self.free(coord) or not self.in_free_up(coord):
             coord = (rn.randint(0, wd), rn.randint(0, ht))
         self.coord_not_free.append(coord)
+        self.free_cell_up.remove(coord)
         return coord
 
     def free_cell(self):
@@ -158,29 +174,33 @@ class Game:
     def interaction_with_artifact(self):
         for elem in self.elements:
             if self.player.coordinates == elem.coordinates:
-                t = type(elem)
                 elem.action(self.player)
                 self.coord_not_free.remove(elem.coordinates)
                 self.elements.remove(elem)
                 break
 
-    # ИСПРАВИТЬ!!!!! ЗАЦИКЛИВАЕТСЯ
+    def check_mylife(self):
+        if self.player.life <= 0:
+            if self.player.artifacts.get('extralife', 0) > 0:
+                self.player.artifacts['extralife'] -= 1
+                self.player.change_life(100)
+            else:
+                return True
+        return False
+
+    # Исправлено
     def war(self, elem):
-        is_end = False
+        elem.ability.action(elem, self.player)
+        if self.check_mylife():
+            return True
         while True:
-            elem.ability.action(elem, self.player)
             self.player.hit(elem)
             if elem.life <= 0:
                 break
             elem.hit(self.player)
-            if self.player.life <= 0:
-                if self.player.artifacts.get('extralife', 0) > 0:
-                    self.player.artifacts['extralife'] -= 1
-                    self.player.change_life(100)
-                    continue
-                else:
-                    is_end = True
-        return is_end
+            if self.check_mylife():
+                return True
+        return False
 
     def interaction_with_chr(self):
         is_end = False
@@ -213,7 +233,9 @@ class Game:
     def game(self):
         self.var1_level()
         self.maze.print_maze(self, self.player)
-        while not self.is_end(False):
+        print(self.player)
+        ends = self.is_end(False)
+        while not ends:
             listener = kb.Listener(on_release=on_release)
             listener.start()
             listener.join()
@@ -223,20 +245,32 @@ class Game:
             self.interaction_with_artifact()
             fl = self.interaction_with_chr()
             if fl:
-                print("Game over!\n")
+                print("\nПоражение!\n")
+                print(self.player)
                 break
             self.go_character()
             fl = self.interaction_with_chr()
             if fl:
-                print("Game over!\n")
+                print("\nПоражение!\n")
+                print(self.player)
                 break
+            #clear()
+           # os.system('clear')
             self.maze.print_maze(self, self.player)
             print(self.player)
+            ends = self.is_end(False)
+        if ends:
+            print('\nВЫ ПОБЕДИЛИ!\n')
 
 
+def clear():
+    sys.stdout.write('\033[1J')
+    sys.stdout.write('\033[;H')
 
 if __name__ == "__main__":
+    maps = {1: 3, 2: 4}
+    print(maps.popitem(), maps)
     player = Chr.Player('', (0, 0), 0, 10, 50)
-    game = Game(20, 10, player)
+    game = Game(10, 5, player)
     game.game()
     player = Chr.Player('%', (0, 0), 0, 10, 50)
