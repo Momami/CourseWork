@@ -1,20 +1,20 @@
 import game_maze.Character as Chr
 import game_maze.Artefacts as Art
 import game_maze.GenerationMaze as GenMaze
-import game_maze.Levels as Level
+import game_maze.Strategy as St
 import random as rn
-import os
-import sys
 from pynput import keyboard as kb
 
 keys = [kb.Key.down, kb.Key.right, kb.Key.left, kb.Key.up]
 pressKey = None
+
 
 def on_press(key):
     try:
         print('alphanumeric key {0} pressed'.format(key.char))
     except AttributeError:
         print('special key {0} pressed'.format(key))
+
 
 def on_release(key):
     # print('{0} released'.format(key))
@@ -29,13 +29,18 @@ def on_release(key):
 
 class Game:
 
-    def __init__(self, width, height, player):
+    def __init__(self, width, height, player, player_2, fl=True):
         num = rn.randint(0, 3)
         self.maze = GenMaze.Maze(width, height, num)
         self.player = player
+        self.player_2 = player_2
+        self.cur_pl = None
+        self.next_pl = None
+        self.auto = fl
+        self.counter = 0
         self.elements = []
         self.character = []
-        self.coord_not_free = [self.player.coordinates]
+        self.coord_not_free = [self.player.coordinates, self.player_2.coordinates]
         self.free_cell_up = []
         self.free_cell_upgrade()
         self.var1_level()
@@ -44,10 +49,11 @@ class Game:
         ht, wd = self.maze.height, self.maze.width
         for _ in range(count):
             karma = rn.randint(-100, 100)
-            icon = 'P' if karma >= 0 else 'M'
-            attack = rn.randint(0, 100)
+            # icon = 'P' if karma >= 0 else 'M'
+            icon = 'P'
+            attack = rn.randint(0, 30)
             coord = self.free_cell()
-            life = rn.randint(0, 100)
+            life = rn.randint(0, 50)
             ability = Chr.Ability(karma)
             self.character.append(Chr.Character(icon, coord, karma, attack, life, ability))
 
@@ -81,11 +87,18 @@ class Game:
                 coord = self.free_for_strange()
                 el = Art.Surprise(icon, coord, ht, wd)
             self.elements.append(el)
+
     # ¥ ҁ
+
+    def generate_money(self, count):
+        for _ in range(count):
+            icon = '€'
+            coord = self.free_cell()
+            self.elements.append(Art.Thing(icon, coord))
 
     def generate_elements(self, dim):
         k = dim // 10
-        count = rn.randint(1, k)
+        count = rn.randint(0, k)
         counter = k - count
         self.generate_artifact(count)
         self.generate_character(counter)
@@ -142,30 +155,35 @@ class Game:
 
     # НАЙТИ ПОДХОДЯЩИЕ ИКОНКИ
     def icon_elements(self, coord):
+        if coord == self.player.coordinates:
+            return self.player.icon
+        if coord == self.player_2.coordinates:
+            return self.player_2.icon
         for ch in self.character:
             if coord == ch.coordinates:
                 return ch.icon
         for art in self.elements:
             if coord == art.coordinates:
                 return art.icon
-        if coord == self.player.coordinates:
-            return '۝'
         if coord == self.point_to:
-            return '0'
+            return '۝'
         return ' '
 
     def var1_level(self):
         ht, wd = self.maze.height, self.maze.width
         self.generate_elements(ht * wd)
-        # self.point_in = self.free_cell()
         self.point_to = self.free_cell()
 
     def var2_level(self, count):
         ht, wd = self.maze.height, self.maze.width
-        self.point_in = self.point_to = self.free_cell()
-        self.generate_artifact(count)
-        self.counter = ht * wd // 10 - count
-        self.generate_character(self.counter)
+        self.point_to = self.free_cell()
+        self.generate_money(count * 2 - 1)
+        self.counter = count
+        counter = ht * wd // 10 - count
+        if counter > 0:
+            cntr_artif = rn.randint(0, counter)
+            self.generate_elements(cntr_artif)
+            self.generate_character(counter - cntr_artif)
 
     def change_loc_character(self, coord1, coord2):
         self.coord_not_free.append(coord2)
@@ -173,46 +191,57 @@ class Game:
 
     def interaction_with_artifact(self):
         for elem in self.elements:
-            if self.player.coordinates == elem.coordinates:
-                elem.action(self.player)
+            if self.cur_pl.coordinates == elem.coordinates:
+                elem.action(self.cur_pl)
                 self.coord_not_free.remove(elem.coordinates)
                 self.elements.remove(elem)
+                t = type(elem)
+                if t == Art.Portal or t == Art.Surprise:
+                    self.interaction_with_artifact()
+                    self.interaction_with_chr()
                 break
+        return self.end_because_zero_life(self.cur_pl, self.next_pl)
 
-    def check_mylife(self):
-        if self.player.life <= 0:
-            if self.player.artifacts.get('extralife', 0) > 0:
-                self.player.artifacts['extralife'] -= 1
-                self.player.change_life(100)
+    def check_mylife(self, pl1):
+        if pl1.life <= 0:
+            if pl1.artifacts.get('extralife', 0) > 0:
+                pl1.artifacts['extralife'] -= 1
+                pl1.change_life(100)
             else:
                 return True
         return False
 
+    def end_because_zero_life(self, pl1, pl2):
+        if self.check_mylife(pl1):
+            print("\nПобедил " + pl2.name)
+            print(pl1)
+            return True
+        return False
+
     # Исправлено
     def war(self, elem):
-        elem.ability.action(elem, self.player)
-        if self.check_mylife():
+        elem.ability.action(elem, self.cur_pl)
+        if self.end_because_zero_life(self.cur_pl, self.next_pl):
             return True
         while True:
-            self.player.hit(elem)
+            self.cur_pl.hit(elem)
             if elem.life <= 0:
                 break
-            elem.hit(self.player)
-            if self.check_mylife():
+            elem.hit(self.cur_pl)
+            if self.end_because_zero_life(self.cur_pl, self.next_pl):
                 return True
         return False
 
     def interaction_with_chr(self):
         is_end = False
         for elem in self.character:
-            if self.player.coordinates == elem.coordinates:
-                if self.player.karma * elem.karma >= 0:
-                    elem.ability.action(elem, self.player)
+            if self.cur_pl.coordinates == elem.coordinates:
+                if self.cur_pl.karma * elem.karma >= 0:
+                    elem.ability.action(elem, self.cur_pl)
                 else:
                     is_end = self.war(elem)
                 self.coord_not_free.remove(elem.coordinates)
                 self.character.remove(elem)
-                break
         return is_end
 
     # ЗАХОДЯТ НА ЗАНЯТЫЕ КЛЕТКИ
@@ -224,53 +253,92 @@ class Game:
             self.coord_not_free.append(elem.coordinates)
 
     def is_end(self, fl):
-        if self.player.coordinates == self.point_to:
-            if fl and self.player.artifacts['money'] >= self.counter or not fl:
+        if self.cur_pl.coordinates == self.point_to:
+            if not fl or self.cur_pl.artifacts.get('money', 0) \
+                    and self.cur_pl.artifacts['money'] >= self.counter:
                 return True
             return False
         return False
 
+    def interaction_players(self):
+        if self.cur_pl.coordinates == self.next_pl.coordinates:
+            self.next_pl.hit(self.cur_pl)
+            if self.end_because_zero_life(self.cur_pl, self.next_pl):
+                return True, False
+            self.cur_pl.hit(self.next_pl)
+            if self.end_because_zero_life(self.next_pl, self.cur_pl):
+                return True, False
+        return False, True
+
     def game(self):
-        self.var1_level()
-        self.maze.print_maze(self, self.player)
-        print(self.player)
-        ends = self.is_end(False)
+        self.var2_level(4)
+        self.cur_pl = self.player
+        self.next_pl = self.player_2
+        self.maze.print_maze(self, self.cur_pl)
+        print(self.cur_pl)
+        ends = self.is_end(True)
+        if self.auto:
+            self.manual(ends)
+        else:
+            self.automatic(ends)
+
+    def automatic(self, ends):
+        self.player.add_strategy(St.Strategy([], [], self.maze))
+        self.player_2.add_strategy(St.Strategy([], [], self.maze))
         while not ends:
+            fl = self.interaction_with_chr()
+            if fl:
+                break
+            coord = self.cur_pl.coordinates
+            self.cur_pl.coordinates = self.cur_pl.strategy.strategy(coord)
+            ends, fl = self.main_check_game(coord, ends)
+            if fl:
+                break
+        if ends:
+            print('\nПобедил ' + self.cur_pl.name + '\n')
+
+    def manual(self, ends):
+        while not ends:
+            fl = self.interaction_with_chr()
+            if fl:
+                break
             listener = kb.Listener(on_release=on_release)
             listener.start()
             listener.join()
-            coord = self.player.coordinates
-            self.player.new_location(self.maze, pressKey)
-            self.change_loc_character(coord, self.player.coordinates)
-            self.interaction_with_artifact()
-            fl = self.interaction_with_chr()
+            coord = self.cur_pl.coordinates
+            self.cur_pl.new_location(self.maze, pressKey)
+            ends, fl = self.main_check_game(coord, ends)
             if fl:
-                print("\nПоражение!\n")
-                print(self.player)
                 break
-            self.go_character()
-            fl = self.interaction_with_chr()
-            if fl:
-                print("\nПоражение!\n")
-                print(self.player)
-                break
-            #clear()
-           # os.system('clear')
-            self.maze.print_maze(self, self.player)
-            print(self.player)
-            ends = self.is_end(False)
         if ends:
-            print('\nВЫ ПОБЕДИЛИ!\n')
+            print('\nПобедил ' + self.cur_pl.name + '\n')
 
+    def main_check_game(self, coord, ends):
+        fl, ends = self.interaction_players()
+        if fl:
+            return ends, fl
+        fl = self.interaction_with_chr()
+        if fl:
+            return ends, True
+        self.change_loc_character(coord, self.cur_pl.coordinates)
+        fl = self.interaction_with_artifact()
+        if fl:
+            return ends, True
+        fl = self.interaction_with_chr()
+        if fl:
+            return ends, True
+        self.go_character()
+        fl = self.interaction_with_chr()
+        if fl:
+            return ends, True
+        self.maze.print_maze(self, self.cur_pl)
+        self.cur_pl, self.next_pl = self.next_pl, self.cur_pl
+        print(self.cur_pl)
+        return self.is_end(True), False
 
-def clear():
-    sys.stdout.write('\033[1J')
-    sys.stdout.write('\033[;H')
 
 if __name__ == "__main__":
-    maps = {1: 3, 2: 4}
-    print(maps.popitem(), maps)
-    player = Chr.Player('', (0, 0), 0, 10, 50)
-    game = Game(10, 5, player)
+    player = Chr.Player('D', 'Doctor Strange', (0, 0), 0, 10, 50)
+    player_2 = Chr.Player('J', 'John Snow', (9, 4), 0, 10, 50)
+    game = Game(10, 5, player, player_2, False)
     game.game()
-    player = Chr.Player('%', (0, 0), 0, 10, 50)

@@ -106,14 +106,18 @@ class Character:
 
 
 class Player(Character):
-    def __init__(self, icon, coordinates, karma, attack, life):
+    def __init__(self, icon, name, coordinates, karma, attack, life):
         Character.__init__(self, icon, coordinates, karma, attack, life, '')
         self.artifacts = dict()
         self.ability = 'life'
+        self.name = name
+
+    def add_strategy(self, strat):
+        self.strategy = strat
 
     def __str__(self):
-        s = 'Карма: {0}\nЖизнь: {1}\nАтака: {2}\nАртефакты: '\
-            .format(self.karma, self.life, self.attack)
+        s = 'Игрок: {3}\nКарма: {0}\nЖизнь: {1}\nАтака: {2}\nАртефакты: '\
+            .format(self.karma, self.life, self.attack, self.name)
         for key, val in self.artifacts.items():
             s += key + ' - ' + str(val) + '; '
         return s

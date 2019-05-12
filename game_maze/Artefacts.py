@@ -1,5 +1,5 @@
 import random
-import GenerationMaze
+#import GenerationMaze
 
 
 class Artifact:
@@ -38,6 +38,7 @@ class Portal(Artifact):
     def action(self, player):
         player.change_location_for_portal(self.coordinates_to)
 
+
 class ExtraLife(Artifact):
     def __init__(self, icon, coordinates):
         super().__init__(icon, coordinates)
@@ -53,7 +54,7 @@ class Surprise(Artifact):
         self.wt = wt
 
     def action(self, person):
-        number = random.randint(0, 12)
+        number = random.randint(0, 11)
         ic, coord = '', (0, 0)
         if number < 4:
             life = random.randint(-person.life, 100)
