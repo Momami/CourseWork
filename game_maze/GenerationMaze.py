@@ -2,6 +2,7 @@ import random
 
 
 # Алгоритмы генерации лабиринта
+# Стек, реализованный через списки
 class Stack:
     def __init__(self):
         self.items = []
@@ -24,12 +25,14 @@ class Cell:
         self.y = y
 
 
+# Структура для хранения данных о ячейке(содержимое и посещение)
 class Vis:
     def __init__(self, num, vis):
         self.num = num
         self.vis = vis
 
 
+# главный класс лабиринтов
 class Maze:
     S, E = 1, 2
 
@@ -39,16 +42,13 @@ class Maze:
         self.maze = []
         self.choose_algo(num_algo)
 
-    #def __setitem__(self, key, m, value):
-
-     #   self.maze[key] = value
-
     def __len__(self):
         return self.height
 
     def __getitem__(self, i):
         return self.maze[i]
 
+    # выбор алгоритма генерации
     def choose_algo(self, num_algo):
         if num_algo == 0:
             self.maze = MazeEller(self.width, self.height).generation_maze()
@@ -59,21 +59,8 @@ class Maze:
         elif num_algo == 3:
             self.maze = MazeWilson(self.width, self.height).generation_maze()
 
-    def row2str(self, row):
-        s = "\r|"
-
-        for index, cell in enumerate(row):
-            south = (cell & self.S != 0)
-            next_south = (index + 1 < len(row) and row[index + 1] & self.S != 0)
-            east = (cell & self.E != 0)
-            s += (" " if south else "_")
-            if east:
-                s = s + (" " if (south or next_south) else "_")
-            else:
-                s = s + "|"
-        return s
-
-    def row2str22(self, mas, level, player):
+    # вывод построчно
+    def row_tostr(self, mas, level, player):
 
         for i, row in enumerate(self.maze):
             s = "|"
@@ -125,20 +112,17 @@ class Maze:
                 u = "+" + "-" * (self.width * 2 - 1) + '+'
             mas.append(u)
 
+    # вывод лабиринта в консоль
     def print_maze(self, level, player):
         print("+" + "-" * (self.width * 2 - 1) + '+')
         mas = []
 
-        self.row2str22(mas, level, player)
+        self.row_tostr(mas, level, player)
         for row in mas:
             print(row)
 
-    def print_maze1(self):
-        print("+" + "-" * (self.width * 2 - 1) + '+')
-        for row in self.maze:
-            print(self.row2str(row))
 
-
+# дополнительный класс для алгоритма Эллера
 class State:
     def __init__(self, width, next_set=-1):
         self.width = width
@@ -146,9 +130,11 @@ class State:
         self.sets = dict()
         self.cells = {}
 
+    # переход к следующей строке лабиринта
     def next(self):
         return State(self.width, self.next_set)
 
+    # создание множеств для пустых ячеек
     def populate(self):
         for cell in range(self.width):
             if not cell in self.cells:
@@ -158,6 +144,7 @@ class State:
                 self.cells[cell] = set
         return self
 
+    # слияние ячеек в одно множество
     def merge(self, sink_cell, target_cell):
         sink, target = self.cells[sink_cell], self.cells[target_cell]
         self.sets.setdefault(sink, []).extend(self.sets.setdefault(target, []))
@@ -166,14 +153,17 @@ class State:
         if target in self.sets:
             del (self.sets[target])
 
+    # В одном множестве ячейки?
     def same_is(self, cell1, cell2):
         return self.cells[cell1] == self.cells[cell2]
 
+    # добавление нового множества в общий список
     def add(self, cell, set):
         self.cells[cell] = set
         self.sets.setdefault(set, []).append(cell)
 
 
+# Алгоритм Эллера
 class MazeEller:
     S, E = 1, 2
 
@@ -192,7 +182,6 @@ class MazeEller:
         # ---
         # горизонтальный набор
         # ---
-
         for c in range(state.width - 1):
             if state.same_is(c, c + 1) or (not finish and random.randrange(0, 2) > 0):
                 connected_sets.append(connected_set)
@@ -229,6 +218,7 @@ class MazeEller:
         next_state = next_state.populate()
         return next_state, row
 
+    # генерация определенного кол-ва строк лабиринта
     def generation_maze(self):
         maze = []
         state = State(self.width)
@@ -244,6 +234,7 @@ class MazeEller:
         return maze
 
 
+# алгоритм генерации с помощью поиска в глубину
 class MazeGraph:
 
     def __init__(self, height, width):
@@ -252,12 +243,14 @@ class MazeGraph:
         self.maze = []
         self.create_begin_matrix()
 
+    # создание начальной матрицы
     def create_begin_matrix(self):
         for i in range(self.height):
             self.maze.append([])
             for j in range(self.width):
                 self.maze[i].append(Vis(0, 0))
 
+    # основной алгоритм
     def generation_maze(self):
         check = True
         stack = Stack()
@@ -287,6 +280,7 @@ class MazeGraph:
                 self.maze[i][j] = self.maze[i][j].num
         return self.maze
 
+    # поиск непосещенных ячеек
     def unvisited_cells(self):
         mas = []
         for i in range(self.height):
@@ -295,6 +289,7 @@ class MazeGraph:
                     mas.append(Cell(i, j))
         return mas
 
+    # поиск соседних вершин
     def get_neighbors(self, cell):
         dist = 1
         up = Cell(cell.x, cell.y - dist)
@@ -312,6 +307,7 @@ class MazeGraph:
                     mas_result.append(mas_dir[i])
         return mas_result
 
+    # удаление стены
     def remove_wall(self, first, second):
         x_diff, y_diff = second.x - first.x, second.y - first.y
 
@@ -327,6 +323,7 @@ class MazeGraph:
                 self.maze[first.y][first.x].num += 1
 
 
+# алгоритм SideWinder
 class Sidewinder:
 
     def __init__(self, width, height):
@@ -334,17 +331,20 @@ class Sidewinder:
         self.width = width
         self.maze = []
 
+    # создание начальной матрицы
     def create_grid(self):
         for y in range(0, self.height):
             self.maze.append([])
             for x in range(0, self.width):
                 self.maze[y].append(0)
 
+    # Генерация
     def generation_maze(self):
         self.create_grid()
         self.sidewinder()
         return self.maze
 
+    # основной алгоритм
     def sidewinder(self):
         cx = 0
         for y in range(self.height):
@@ -364,6 +364,7 @@ class Sidewinder:
                     self.maze[y][x] += 2
 
 
+# Алгоритм Уилсона
 class MazeWilson:
     DIRS = ["UP", "DOWN", "LEFT", "RIGHT"]
 
@@ -372,12 +373,14 @@ class MazeWilson:
         self.width = width
         self.maze = []
 
+    # создание начальной матрицы
     def create_grid(self):
         for y in range(0, self.height):
             self.maze.append([])
             for x in range(0, self.width):
                 self.maze[y].append(Vis(0, 0))
 
+    # генерация
     def generation_maze(self):
         self.create_grid()
         self.wilson()
@@ -386,6 +389,7 @@ class MazeWilson:
                 self.maze[i][j] = self.maze[i][j].num
         return self.maze
 
+    # поиск непосещенных вершин
     def unvisited_cells(self):
         unvisited = []
         for y, row in enumerate(self.maze):
@@ -394,6 +398,7 @@ class MazeWilson:
                     unvisited.append((x, y))
         return unvisited
 
+    # основной алгоритм
     def wilson(self):
         cells_mas = self.unvisited_cells()  # Вершины, не находящиеся в дереве
         dirs_stack = []  # Стек направлений
@@ -468,11 +473,3 @@ class MazeWilson:
 
             dirs_stack = []  # Обнуление стека направлений
 
-
-if __name__ == "__main__":
-    el = Maze(20, 10, 0)
-    el1 = Maze(20, 10, 1)
-    el2 = Maze(20, 10, 2)
-    el3 = Maze(20, 10, 3)
-    el.print_maze()
-    # el.print_maze1()

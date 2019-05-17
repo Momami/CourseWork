@@ -1,21 +1,16 @@
 import game_maze.Character as Chr
-import game_maze.Artefacts as Art
+import game_maze.Artifacts as Art
 import game_maze.GenerationMaze as GenMaze
 import game_maze.Strategy as St
 import random as rn
 from pynput import keyboard as kb
 
+# кнопки стрелок
 keys = [kb.Key.down, kb.Key.right, kb.Key.left, kb.Key.up]
 pressKey = None
 
 
-def on_press(key):
-    try:
-        print('alphanumeric key {0} pressed'.format(key.char))
-    except AttributeError:
-        print('special key {0} pressed'.format(key))
-
-
+# действие при отпускании кнопки
 def on_release(key):
     # print('{0} released'.format(key))
     if key in keys:
@@ -27,6 +22,7 @@ def on_release(key):
         print('Используйте клавиши стрелок, чтобы управлять персонажем\n')
 
 
+'''Игра'''
 class Game:
 
     def __init__(self, width, height, player, player_2, fl=True):
@@ -45,6 +41,7 @@ class Game:
         self.free_cell_upgrade()
         self.var1_level()
 
+    # генерация персонажей
     def generate_character(self, count):
         ht, wd = self.maze.height, self.maze.width
         for _ in range(count):
@@ -57,6 +54,7 @@ class Game:
             ability = Chr.Ability(karma)
             self.character.append(Chr.Character(icon, coord, karma, attack, life, ability))
 
+    # генерация артефактов
     def generate_artifact(self, count):
         ht, wd = self.maze.height, self.maze.width
         for _ in range(count):
@@ -85,17 +83,17 @@ class Game:
             else:
                 icon = '¿'
                 coord = self.free_for_strange()
-                el = Art.Surprise(icon, coord, ht, wd)
+                el = Art.Surprise(icon, coord, self.free_cell())
             self.elements.append(el)
 
-    # ¥ ҁ
-
+    # генерация монет
     def generate_money(self, count):
         for _ in range(count):
             icon = '€'
             coord = self.free_cell()
             self.elements.append(Art.Thing(icon, coord))
 
+    # генерация элементов лабиринта
     def generate_elements(self, dim):
         k = dim // 10
         count = rn.randint(0, k)
@@ -103,11 +101,12 @@ class Game:
         self.generate_artifact(count)
         self.generate_character(counter)
 
+    # поиск свободных клеток, окруженных стенами с 3 сторон
     def free_cell_upgrade(self):
         ht, wd = self.maze.height, self.maze.width
         if self.maze[0][0] == 1 or self.maze[0][0] == 2:
             self.free_cell_up.append((0, 0))
-        # дописать нормально проверку
+        # проверки на наличие трех стен вокруг
         for i in range(1, ht):
             for j in range(1, wd):
                 up = self.maze[i - 1][j] == 0 or self.maze[i - 1][j] == 2
@@ -131,6 +130,7 @@ class Game:
             return True
         return False
 
+    # поиск свободной клетки для артефактов "Портал" и "Сюрприз"
     def free_for_strange(self):
         ht, wd = self.maze.height - 1, self.maze.width - 1
         coord = (rn.randint(0, wd), rn.randint(0, ht))
@@ -140,6 +140,7 @@ class Game:
         self.free_cell_up.remove(coord)
         return coord
 
+    # поиск свободных клеток на карте
     def free_cell(self):
         ht, wd = self.maze.height - 1, self.maze.width - 1
         coord = (rn.randint(0, wd), rn.randint(0, ht))
@@ -153,7 +154,7 @@ class Game:
             return False
         return True
 
-    # НАЙТИ ПОДХОДЯЩИЕ ИКОНКИ
+    # Иконки для вывода на карту
     def icon_elements(self, coord):
         if coord == self.player.coordinates:
             return self.player.icon
@@ -169,11 +170,13 @@ class Game:
             return '۝'
         return ' '
 
+    # уровень 1
     def var1_level(self):
         ht, wd = self.maze.height, self.maze.width
         self.generate_elements(ht * wd)
         self.point_to = self.free_cell()
 
+    # уровень 2
     def var2_level(self, count):
         ht, wd = self.maze.height, self.maze.width
         self.point_to = self.free_cell()
@@ -185,10 +188,12 @@ class Game:
             self.generate_elements(cntr_artif)
             self.generate_character(counter - cntr_artif)
 
+    # новая позиция у персонажа (при перемещении)
     def change_loc_character(self, coord1, coord2):
         self.coord_not_free.append(coord2)
         self.coord_not_free.remove(coord1)
 
+    # взаимодействие игрока и артефакта
     def interaction_with_artifact(self):
         for elem in self.elements:
             if self.cur_pl.coordinates == elem.coordinates:
@@ -202,6 +207,7 @@ class Game:
                 break
         return self.end_because_zero_life(self.cur_pl, self.next_pl)
 
+    # проверка наличия жизни
     def check_mylife(self, pl1):
         if pl1.life <= 0:
             if pl1.artifacts.get('extralife', 0) > 0:
@@ -211,6 +217,7 @@ class Game:
                 return True
         return False
 
+    # действия, когда у одного игрока закончилась жизнь
     def end_because_zero_life(self, pl1, pl2):
         if self.check_mylife(pl1):
             print("\nПобедил " + pl2.name)
@@ -218,7 +225,7 @@ class Game:
             return True
         return False
 
-    # Исправлено
+    # Бой игрока и персонажа
     def war(self, elem):
         elem.ability.action(elem, self.cur_pl)
         if self.end_because_zero_life(self.cur_pl, self.next_pl):
@@ -232,6 +239,7 @@ class Game:
                 return True
         return False
 
+    # взаимодействие игрока и персонажа
     def interaction_with_chr(self):
         is_end = False
         for elem in self.character:
@@ -244,7 +252,7 @@ class Game:
                 self.character.remove(elem)
         return is_end
 
-    # ЗАХОДЯТ НА ЗАНЯТЫЕ КЛЕТКИ
+    # Ход всех персонажей
     def go_character(self):
         for elem in self.character:
             coord = elem.coordinates
@@ -252,6 +260,7 @@ class Game:
             self.coord_not_free.remove(coord)
             self.coord_not_free.append(elem.coordinates)
 
+    # проверка на то, закончена ли игра
     def is_end(self, fl):
         if self.cur_pl.coordinates == self.point_to:
             if not fl or self.cur_pl.artifacts.get('money', 0) \
@@ -260,6 +269,7 @@ class Game:
             return False
         return False
 
+    # взаимодействие игроков при встрече
     def interaction_players(self):
         if self.cur_pl.coordinates == self.next_pl.coordinates:
             self.next_pl.hit(self.cur_pl)
@@ -270,8 +280,15 @@ class Game:
                 return True, False
         return False, True
 
+    # игра
     def game(self):
-        self.var2_level(4)
+        lvl = rn.randint(0, 1)
+        if lvl == 1:
+            self.var2_level(4)
+            print("Money")
+        else:
+            self.var1_level()
+            print("Standart")
         self.cur_pl = self.player
         self.next_pl = self.player_2
         self.maze.print_maze(self, self.cur_pl)
@@ -282,9 +299,12 @@ class Game:
         else:
             self.automatic(ends)
 
+    # автоматический режим
     def automatic(self, ends):
-        self.player.add_strategy(St.Strategy([], [], self.maze))
-        self.player_2.add_strategy(St.Strategy([], [], self.maze))
+        if self.player.strat is None:
+            self.player.add_strategy(St.Strategy(self.maze))
+        if self.player.strat is None:
+            self.player_2.add_strategy(St.Strategy(self.maze))
         while not ends:
             fl = self.interaction_with_chr()
             if fl:
@@ -297,6 +317,7 @@ class Game:
         if ends:
             print('\nПобедил ' + self.cur_pl.name + '\n')
 
+    # ручной режим
     def manual(self, ends):
         while not ends:
             fl = self.interaction_with_chr()
@@ -313,6 +334,7 @@ class Game:
         if ends:
             print('\nПобедил ' + self.cur_pl.name + '\n')
 
+    # всевозможные проверки на 1 шаге
     def main_check_game(self, coord, ends):
         fl, ends = self.interaction_players()
         if fl:
@@ -340,5 +362,5 @@ class Game:
 if __name__ == "__main__":
     player = Chr.Player('D', 'Doctor Strange', (0, 0), 0, 10, 50)
     player_2 = Chr.Player('J', 'John Snow', (9, 4), 0, 10, 50)
-    game = Game(10, 5, player, player_2, False)
+    game = Game(10, 5, player, player_2)#, False)
     game.game()

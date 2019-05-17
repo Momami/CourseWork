@@ -1,15 +1,13 @@
 import random
 
 
+# Стратегия игрока
 class Strategy:
-    def __init__(self, art, characters, maze):
-        self.artifacts = art
-        self.characters = characters
+    def __init__(self, maze):
         self.maze = maze
 
+    # Наивный шаг игрока на соседнюю клетку
     def step(self, coord):
-        # num = 0
-        # while num < 5:
         x, y = coord
         where_to_go = random.randint(0, 3)
         if where_to_go == 0:
@@ -23,6 +21,7 @@ class Strategy:
         coord = self.change_location(coord, (x, y))
         return coord
 
+    # Проверка хода
     def change_location(self, coord, coord_to):
         x_in, y_in = coord[0], coord[1]
         x, y = coord_to[0], coord_to[1]
@@ -36,9 +35,11 @@ class Strategy:
             return coord
         return coord_to
 
+    # Стратегия
     def strategy(self, coord):
         return self.step(coord)
 
 
+# Собственная стратегия
 class MyStrategy(Strategy):
     def strategy(self, coord): pass

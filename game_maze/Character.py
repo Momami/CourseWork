@@ -1,15 +1,17 @@
-import game_maze.Artefacts
 from pynput.keyboard import *
 import random
 
 
+# Способность персонажа
 class Ability:
     ability = ''
 
     def __init__(self, karma):
-        self.coeff = abs(karma // 3) * (0 if karma == 0 else karma // abs(karma))
+        self.coeff = abs(karma // 3) * \
+                     (0 if karma == 0 else karma // abs(karma))
         self.is_ability(karma)
 
+    # Выбор способности
     def is_ability(self, karma):
         coefficient = karma / 100
         if abs(coefficient) > 0.5:
@@ -17,6 +19,7 @@ class Ability:
         elif abs(coefficient) > 0:
             self.ability = 'artifact'
 
+    # Действие
     def action(self, player_in, player_to):
         if self.ability == 'life':
             self.life_change(player_in, player_to)
@@ -24,7 +27,6 @@ class Ability:
             self.artifact_change(player_to)
 
     def life_change(self, player_in, player_to):
-        # num = abs(player_in.karma) // 3
         if player_to.karma * self.coeff >= 0:
             player_to.change_life(abs(self.coeff))
         else:
@@ -38,13 +40,13 @@ class Ability:
                 player.add_things('money')
             else:
                 player.add_things('extralife')
-
         else:
             if player.count_art():
                 player.remove_things()
         player.change_karma(self.coeff)
 
 
+# Персонаж
 class Character:
     def __init__(self, icon, coordinates, karma, attack, life, ability):
         self.icon = icon
@@ -54,9 +56,11 @@ class Character:
         self.life = life
         self.ability = ability
 
+    # Удар
     def hit(self, player):
         player.change_life(-self.attack)
 
+    # Изменение кармы
     def change_karma(self, count):
         self.karma += count
         if self.karma > 100:
@@ -64,6 +68,7 @@ class Character:
         elif self.karma < -100:
             self.karma = -100
 
+    # Изменение жизни
     def change_life(self, count):
         self.life += count
         if self.life > 100:
@@ -71,6 +76,7 @@ class Character:
         elif self.life < 0:
             self.life = 0
 
+    # Ход в случайную клетку
     def step(self, maze):
         num = 0
         while num < 5:
@@ -102,15 +108,15 @@ class Character:
             return
         self.coordinates = coord_to
 
-    # def kill(self): pass
 
-
+# Игрок
 class Player(Character):
-    def __init__(self, icon, name, coordinates, karma, attack, life):
+    def __init__(self, icon, name, coordinates, karma, attack, life, strat=None):
         Character.__init__(self, icon, coordinates, karma, attack, life, '')
         self.artifacts = dict()
         self.ability = 'life'
         self.name = name
+        self.strat = strat
 
     def add_strategy(self, strat):
         self.strategy = strat
@@ -122,6 +128,7 @@ class Player(Character):
             s += key + ' - ' + str(val) + '; '
         return s
 
+    # методы для артефактов
     def count_art(self):
         return len(self.artifacts)
 
@@ -130,17 +137,21 @@ class Player(Character):
         value -= 1
         self.artifacts[key] = value
 
+    # изменение атаки
     def change_attack(self, attack):
         self.attack += attack
         if self.attack > 100:
             self.attack = 100
 
+    # добавление артефакты
     def add_things(self, thing):
         self.artifacts[thing] = self.artifacts.get(thing, 0) + 1
 
+    # смена координат
     def change_location_for_portal(self, coord):
         self.coordinates = coord
 
+    # новая позиция по кнопке
     def new_location(self, maze, key):
         x, y = self.coordinates[0], self.coordinates[1]
         if key == Key.left:

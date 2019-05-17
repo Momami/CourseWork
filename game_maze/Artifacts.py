@@ -1,7 +1,7 @@
 import random
-#import GenerationMaze
 
 
+# Артефакты
 class Artifact:
     def __init__(self, icon, coordinates):
         self.icon = icon
@@ -9,6 +9,7 @@ class Artifact:
 
     def action(self, person):
         pass
+
 
 class Life(Artifact):
     def __init__(self, icon, coordinates, count):
@@ -18,6 +19,7 @@ class Life(Artifact):
     def action(self, person):
         person.change_life(self.count)
 
+
 class Attack(Artifact):
     def __init__(self, icon, coordinates, count):
         super().__init__(icon, coordinates)
@@ -26,9 +28,11 @@ class Attack(Artifact):
     def action(self, person):
         person.change_attack(self.count)
 
+
 class Thing(Artifact):
     def action(self, person):
         person.add_things('money')
+
 
 class Portal(Artifact):
     def __init__(self, icon, coordinates, coordinates_to):
@@ -48,10 +52,9 @@ class ExtraLife(Artifact):
 
 
 class Surprise(Artifact):
-    def __init__(self, icon, coordinates, ht, wt):
+    def __init__(self, icon, coordinates, coord_to):
         super().__init__(icon, coordinates)
-        self.ht = ht
-        self.wt = wt
+        self.coord_to = coord_to
 
     def action(self, person):
         number = random.randint(0, 11)
@@ -63,8 +66,5 @@ class Surprise(Artifact):
             attack = random.randint(-person.attack, 100)
             Attack(ic, coord, attack).action(person)
         elif number < 12:
-            x, y = random.randint(0, self.wt - 1), random.randint(0, self.ht - 1)
-            Portal(ic, coord, (x, y)).action(person)
-        else:
-            person.easter_egg()
+            Portal(ic, coord, self.coord_to).action(person)
 
